@@ -1,6 +1,8 @@
 import numpy as np
 import cv2
 import os
+from wavelets import dwt2_edge_detection
+from gaussian_smoothing import gaussian_smooth
 
 def remove_background(
     image_path,
@@ -38,9 +40,12 @@ def remove_background(
     # Convert image to grayscale
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+    # image_gray = cv2.medianBlur(image_gray, 3)
+
     # Apply Canny Edge Detection
     # TODO: Replace with other edge detections
-    edges = cv2.Canny(image_gray, canny_low, canny_high)
+    edges = dwt2_edge_detection(image_gray, 'haar', 2, 255, 20) # cv2.Canny(image_gray, canny_low, canny_high)
+    # edges = cv2.Canny(image_gray, canny_low, canny_high)
     edges = cv2.dilate(edges, None)
     edges = cv2.erode(edges, None)
 

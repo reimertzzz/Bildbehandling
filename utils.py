@@ -33,7 +33,6 @@ def show_image(image, caption=None):
     plt.axis('off')
     plt.show()
 
-
 def dwt2_gray(image, wavelet, level=1):
     ''' Perform dwt2 and transform each image to the original size. '''
     orig_size = image.shape
