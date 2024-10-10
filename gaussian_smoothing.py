@@ -4,9 +4,9 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 
-def gaussian_smooth(img_path, sigma):
-    img_gray = Image.open(img_path).convert('L')
-    np_image = np.asarray(img_gray)
+def gaussian_smooth(np_image, sigma):
+   # img_gray = Image.open(img_path).convert('L')
+  #  np_image = np.asarray(img_gray)
     smoothed_img = gaussian_filter(np_image, sigma)
     return smoothed_img
 

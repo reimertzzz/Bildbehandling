@@ -41,10 +41,10 @@ def remove_background(
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # image_gray = cv2.medianBlur(image_gray, 3)
-
+    image_smooth = gaussian_smooth(image_gray,10)
     # Apply Canny Edge Detection
     # TODO: Replace with other edge detections
-    edges = dwt2_edge_detection(image_gray, 'haar', 2, 255, 20) # cv2.Canny(image_gray, canny_low, canny_high)
+    edges = dwt2_edge_detection(image_smooth, 'haar', 2, 255, 20) # cv2.Canny(image_gray, canny_low, canny_high)
     # edges = cv2.Canny(image_gray, canny_low, canny_high)
     edges = cv2.dilate(edges, None)
     edges = cv2.erode(edges, None)
@@ -107,7 +107,7 @@ def remove_background(
 # girl.jpeg
 # plain_background_portrait.jpg
 # girl_with_sharp_background.jpg
-mask, masked_image, image_with_contours = remove_background('./images/plain_background_portrait.jpg')
+mask, masked_image, image_with_contours = remove_background('./images/girl_with_sharp_background.jpg')
 cv2.imwrite('output/mask.jpg', mask)
 cv2.imwrite('output/masked_image.jpg', masked_image)
 cv2.imwrite('output/contours.jpg', image_with_contours)
