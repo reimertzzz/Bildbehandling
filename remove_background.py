@@ -3,13 +3,17 @@ import cv2
 import os
 from wavelets import dwt2_edge_detection
 from gaussian_smoothing import gaussian_smooth
+from scipy.ndimage import label
+from skimage.measure import regionprops
+# from matplotlib.pyplot import plt
 
 def remove_background(
     image_path,
-    blur=21,
+    method="sobel",
+    blur=11,
     canny_low=15,
     canny_high=255,
-    min_area_ratio=0.0005,
+    min_area_ratio=0.005,
     max_area_ratio=0.95,
     mask_dilate_iter=15,
     mask_erode_iter=15,
@@ -39,67 +43,82 @@ def remove_background(
 
     # Convert image to grayscale
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # image_gray = cv2.medianBlur(image_gray, 3)
-
-    # Apply Canny Edge Detection
-    # TODO: Replace with other edge detections
-    edges = dwt2_edge_detection(image_gray, 'haar', 2, 255, 20) # cv2.Canny(image_gray, canny_low, canny_high)
-    # edges = cv2.Canny(image_gray, canny_low, canny_high)
-    edges = cv2.dilate(edges, None)
-    edges = cv2.erode(edges, None)
-
-    # Find contours in edges
-    contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-
-    # Calculate contour areas and filter based on area thresholds
-    contour_info = [(c, cv2.contourArea(c)) for c in contours]
-
-    # Get the area of the image as a comparison
-    image_area = image.shape[0] * image.shape[1]
-
-    # Calculate max and min areas in terms of pixels
-    max_area = max_area_ratio * image_area
-    min_area = min_area_ratio * image_area
-
-    # Create an empty mask
-    mask = np.zeros(edges.shape, dtype=np.uint8)
-
-    #Create a copy of the image to draw contours on
-    image_with_contours = image.copy()
-
-    # Prepare a list to store contours to draw
-    contours_to_draw = []
-
-    # Fill mask with relevant contours
-    for contour in contour_info:
-        if min_area < contour[1] < max_area:
-            # Fill the contour on the mask
-            cv2.fillConvexPoly(mask, contour[0], 255)
-            contours_to_draw.append(contour[0])
-
-    cv2.drawContours(image_with_contours, contours_to_draw, -1, (0, 255, 0), thickness=2)
+    image_smooth = gaussian_smooth(image_gray,2)
 
 
-    # Smooth the mask to reduce noise and improve the result
-    mask = cv2.dilate(mask, None, iterations=mask_dilate_iter)
-    mask = cv2.erode(mask, None, iterations=mask_erode_iter)
-    mask = cv2.GaussianBlur(mask, (blur, blur), 0)
+########################################################
+    # Define Sobel filters
+    if method == "sobel":
 
-    # Create a 3-channel alpha mask
-    mask_stack = mask.astype('float32') / 255.0
-    mask_stack = np.dstack([mask_stack]*3)
+        sobel_horizontal = np.array([[1, 2, 1],
+                                    [0, 0, 0],
+                                    [-1, -2, -1]])
 
-    # Convert image to float for blending
-    image_float = image.astype('float32') / 255.0
+        sobel_vertical = np.array([[1, 0, -1],
+                                [2, 0, -2],
+                                [1, 0, -1]])
 
-    # Blend the masked image onto a background
-    masked = (mask_stack * image_float) + ((1 - mask_stack) * mask_color)
-    masked = (masked * 255).astype('uint8')
+        # Apply horizontal and vertical Sobel filters using cv2.filter2D
+        obama_horizontal = cv2.filter2D(image_smooth, -1, sobel_horizontal)
+        obama_vertical = cv2.filter2D(image_smooth, -1, sobel_vertical)
+        edges = np.abs(obama_vertical) + np.abs(obama_horizontal)
+        cv2.imwrite('output/sobel_raw.png', edges)
 
-    # Save the outputs
-    return mask, masked, image_with_contours
+    else:
+        # Apply Canny Edge Detection
+        edges = dwt2_edge_detection(image_gray, 'haar', 2, 230, 17) # Custom edge detection
+        cv2.imwrite('output/wavelet_edges.png', edges)
 
+########################################################
+
+    # Define the threshold values
+    lower_threshold = 20
+    upper_threshold = 255
+
+    binary_mask = cv2.inRange(edges, lower_threshold, upper_threshold)
+
+    cv2.imwrite('output/edges.png', binary_mask)
+    cv2.imshow('Edges', binary_mask)
+
+    kernel = np.ones((10, 10), np.uint8)
+    dilated = cv2.dilate(binary_mask, kernel, iterations=3)
+    cv2.imwrite('output/dilated.png', dilated)
+
+    cleaned = cv2.morphologyEx(dilated, cv2.MORPH_CLOSE, kernel)
+    cv2.imwrite('output/cleaned.png', cleaned)
+
+#####################################################
+    # Step 6: Find contours and select the largest one (assuming it is the person)
+    contours, _ = cv2.findContours(cleaned, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        print("No contours found")
+        return
+
+    # Step 7: Create a blank mask and draw the largest contour
+    mask = np.zeros_like(image_gray)
+    largest_contour = max(contours, key=cv2.contourArea)
+    image_with_contour = image.copy()
+    cv2.drawContours(image_with_contour, [largest_contour], -1, (0, 255, 0), thickness=3)
+    cv2.drawContours(mask, [largest_contour], -1, (255), thickness=cv2.FILLED)
+    cv2.imwrite('output/after_dilated_mask.png', mask)
+
+    mask = np.zeros_like(image_gray)
+    convex_hull = cv2.convexHull(largest_contour)
+    cv2.drawContours(mask, [convex_hull], -1, (255), thickness=cv2.FILLED)
+
+     # Refine mask using morphological operations (optional, for smoothing)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    mask = cv2.GaussianBlur(mask, (5, 5), 0)
+
+    # Apply the mask to the original image to remove the background
+    result = cv2.bitwise_and(image, image, mask=mask)
+
+    # Step 9: Display or save the final mask
+    cv2.imwrite('output/output_mask.png', result)
+    cv2.imshow('result mask', result)
+    cv2.imshow('contour', image_with_contour)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
 
@@ -107,7 +126,6 @@ def remove_background(
 # girl.jpeg
 # plain_background_portrait.jpg
 # girl_with_sharp_background.jpg
-mask, masked_image, image_with_contours = remove_background('./images/plain_background_portrait.jpg')
-cv2.imwrite('output/mask.jpg', mask)
-cv2.imwrite('output/masked_image.jpg', masked_image)
-cv2.imwrite('output/contours.jpg', image_with_contours)
+# oppenheimer_1.png
+# lena.jpeg
+remove_background('./images/girl.jpeg', method="sobel")
