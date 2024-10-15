@@ -144,5 +144,6 @@ def remove_background(
 # girl_with_sharp_background.jpg
 # oppenheimer_1.png
 # lena.jpeg
-remove_background('./images/girl.jpeg', method="wave", convex_hull=False)
+if __name__ == '__main__':
+    remove_background('./images/girl.jpeg', method="wave", convex_hull=False)
 
