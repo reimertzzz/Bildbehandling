@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage import color, io, data, morphology, transform
 import cv2
+import math
+from collections.abc import Iterable
 
 def display_wavelet_coefficients(approximation, details, caption=None):
     # Display on a 2x2 grid
@@ -33,6 +35,34 @@ def show_image(image, caption=None):
     plt.axis('off')
     plt.show()
 
+def show_images(images, captions=None):
+    # Handle single image
+    if not isinstance(images, Iterable):
+        show_image(images, captions)
+        return
+    color_type = [None] * len(images)
+    for i, image in enumerate(images):
+        # Have to explicitly tell matplotlib it's grayscale
+        if len(image.shape) == 2: 
+            color_type[i] = 'gray'
+            # plt.imshow(image, cmap='gray')
+    # Get size of grid to accomodate all images
+    n_cols = math.ceil(math.sqrt(len(images)))
+    n_rows = math.ceil(len(images) / n_cols)
+    # Plot images
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(8, 8))
+    for i, img in enumerate(images):
+        row = i // n_rows; col = i % n_cols
+        if n_rows > 1:
+            ax = axes[row, col]
+        else:
+            ax = axes[row]
+        ax.imshow(img, color_type[i])
+        ax.set_xticks([])
+        ax.set_yticks([])
+        if captions:
+            ax.set_title(captions[i])
+    plt.show()
 
 def dwt2_gray(image, wavelet, level=1):
     ''' Perform dwt2 and transform each image to the original size. '''
