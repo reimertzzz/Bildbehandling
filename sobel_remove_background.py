@@ -2,8 +2,10 @@ import numpy as np
 import cv2
 import os
 import sobelnew as sn
-import scipy.io
+from scipy.io import loadmat
 import matplotlib.pyplot as plt
+import gaussian_smoothing as gs
+from utils import show_image
 def remove_background(
     image_path,
     blur=21,
@@ -40,12 +42,19 @@ def remove_background(
     # Convert image to grayscale
     image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
+    #Applying gaussian smoothing
+    image_gray = gs.gaussian_smooth(image_gray, 2.2) #2.2 for driv 0.05 for oppenheimer
     # Applying edge detection 
     # Note cv2.dilate and cv2.erode are not used in this implementation
-    edges = sn.threshold_image(sn.sobel_image(image_gray),0.31,0.22).astype(np.uint8)
-    
+    #edges = sn.threshold_image(sn.sobel_image(image_gray),0.2,0.12).astype(np.uint8) #0.2, 0.12 for drive 0.3, 0.22 for oppenheimer
+    #print('2')
     
 
+    # Load the .mat file
+    data = loadmat('C:/Users/User/Desktop/Bildbehandling/Bildbehandling/images/A.mat')
+    
+    #   Access the matrix A
+    edges = data['grad_mag_test'].astype(np.uint8)
     #edges = sn.threshold_image(image_gray, strong_threshold=0.18, weak_threshold=0.16)
     # Find contours in edges
     contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
@@ -105,7 +114,25 @@ def remove_background(
 # girl.jpeg
 # plain_background_portrait.jpg
 # girl_with_sharp_background.jpg
-mask, masked_image, image_with_contours = remove_background('./images/oppenheimer_1.png')
+mask, masked_image, image_with_contours = remove_background('./images/girl.jpeg')
 cv2.imwrite('output/mask.jpg', mask)
 cv2.imwrite('output/masked_image.jpg', masked_image)
+show_image(masked_image)
 cv2.imwrite('output/contours.jpg', image_with_contours)
+original = cv2.imread('./images/girl.jpeg')
+
+
+intersection_mask = (masked_image == 0) & (original != 0)
+intersection_mask = original * intersection_mask
+intersection_mask = gs.gaussian_filter(intersection_mask, 2)
+
+
+final_image = masked_image + intersection_mask
+
+show_image(intersection_mask)
+cv2.imwrite('output/original.jpg', original)
+cv2.imwrite('output/portrait.jpg',final_image)
+
+
+show_image(np.hstack((masked_image, final_image)))
+
