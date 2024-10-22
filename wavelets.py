@@ -10,7 +10,7 @@ def dwt2_edge_detection(
     depth: int,
     threshold_upper: int,
     threshold_lower: int,
-    use_horizontal=True
+    weights = (1, 1, 1)
 ) -> np.ndarray:
     """ 
     Edge detection for a gray image.
@@ -20,7 +20,7 @@ def dwt2_edge_detection(
         depth (int): the level of depth of the wavelet transform
         threshold_upper (int): the upper limit for what is not edges [0,255]
         threshold_lower (int): the lower limit for what is not edges [0,255]
-        use_horizontal (bool): Whether to include horizontal details or not
+        weights (tuple): The weight given to horizontal, vertical and diagonal details, respectively
     returns: an numpy array. 
     """
     # Perform wavelet transformation to a depth of 'depth'
@@ -31,10 +31,7 @@ def dwt2_edge_detection(
     details = coeffs[1]
 
     # Get edge mask by using all three details
-    edges = (details[1] + details[2])
-
-    # Use horizontal conditionally
-    if use_horizontal: edges += details[0] 
+    edges = details[0] * weights[0] + details[1] * weights[1] + details[2] * weights[2]
     
     # Convert edges to [0, 255] and uint8
     edges /= np.max(edges)
