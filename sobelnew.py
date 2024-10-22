@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 IMG_PATH = './images/'
 IMG_NAME = 'oppenheimer_1.png'
 # Load the image in grayscale
-b = cv2.imread(IMG_PATH + IMG_NAME, cv2.IMREAD_GRAYSCALE)
-
+# = cv2.imread(IMG_PATH + IMG_NAME, cv2.IMREAD_GRAYSCALE)
+#
 # No need to convert to grayscale again
-image =b
+#mage =b
 
 def sobel_image(image):
     sobel_x = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)
@@ -18,10 +18,6 @@ def sobel_image(image):
 
 # Calculate the magnitude of the gradient
     sobel_combined = np.sqrt(sobel_x**2 + sobel_y**2)
-
-
-    
-
 
     return sobel_combined
 
@@ -46,6 +42,7 @@ def threshold_image(image, strong_threshold, weak_threshold):
     #   Perform edge tracking by hysteresis
     for    i in range(1, rows - 1):
         for j in range(1, cols - 1):
+         
             if inbetween_values[i, j] == 0:
                 continue
             else:
